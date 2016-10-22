@@ -17,6 +17,7 @@ from PyQt4.QtGui import *
 
 from froi.algorithm import meshtool as mshtool
 from froi.algorithm import array2qimage as aq
+from froi.algorithm import surface_data2rgb as s2rgb
 from labelconfig import LabelConfig
 from nibabel.spatialimages import ImageFileError
 
@@ -918,6 +919,31 @@ class Hemisphere(object):
     def get_name(self):
         return self.name
 
+    def get_rgba(self, idx):
+        """
+        Return a RGBA array according to scalar_data, alpha and colormap.
+
+        :param idx:
+            The index of self.overlay_list.
+        :return:
+        """
+
+        return s2rgb.get_rgba_array(self.overlay_list[idx])
+
+    def get_composited_rgb(self):
+
+        start_render_index = self._get_start_render_index()
+        if start_render_index == -1:
+            # geo_surf = self.visualization.scene.mlab.pipeline.surface(mesh, color=(.5, .5, .5))
+            # self.old_surf.append(geo_surf)
+            start_render_index += 1
+
+        rgba_list = []
+        for idx in self.overlay_idx[start_render_index:]:
+            rgba_list.append(self.get_rgba(idx))
+
+        return s2rgb.alpha_composition(rgba_list)
+
     def _read_scalar_data(self, filepath):
         """Load in scalar data from an image.
 
@@ -982,3 +1008,20 @@ class Hemisphere(object):
             fobj.close()
 
         return scalar_data
+
+    def _get_start_render_index(self):
+        """
+        If an overlay's opacity is 1.0(i.e. completely opaque) and need to cover a whole
+        hemisphere, other overlays that below it are no need to be rendered.
+
+        :return: int
+            The index that the render starts at.
+        """
+
+        for index in self.overlay_idx[-1::-1]:
+            scalar = self.overlay_list[index]
+            if "label" not in scalar.get_name() and scalar.get_alpha() == 1. and scalar.is_visible():
+                return self.overlay_idx.index(index)
+
+        # -1 means that the render will start with the geometry surface.
+        return -1
