@@ -70,7 +70,7 @@ def get_rgba_array(overlay):
     elif colormap == 'blue2cyanblue':
         rgba_array = _blue2cyanblue(vector, alpha)
     else:
-        raise RuntimeError("We have not implemented {} colormap at present!".format(self.colormap_list[index]))
+        raise RuntimeError("We have not implemented {} colormap at present!".format(colormap))
 
     return rgba_array
 
@@ -107,6 +107,7 @@ if __name__ == "__main__":
 
     from froi.core.dataobject import Hemisphere
     from mayavi import mlab
+    import time
 
     surf_dir = r'/nfs/t1/nsppara/corticalsurface/fsaverage/surf'
 
@@ -117,21 +118,32 @@ if __name__ == "__main__":
     s3 = os.path.join(surf_dir, 'rh.thickness')
 
     h1 = Hemisphere(surf1)
+
+    N = 10
+    for _ in range(N):
+        h1.load_overlay(s2)
+        h1.overlay_list[_].set_colormap('red2yellow')
+        h1.overlay_list[_].set_alpha(0.5)
+
     h1.load_overlay(s1)
     h1.load_overlay(s2)
     h1.load_overlay(s3)
-    h1.overlay_list[0].set_colormap('red2yellow')
-    h1.overlay_list[1].set_colormap('blue2cyanblue')
-    h1.overlay_list[2].set_colormap('red2yellow')
-    h1.overlay_list[0].set_alpha(1.0)
-    h1.overlay_list[1].set_alpha(0.75)
-    h1.overlay_list[2].set_alpha(0.25)
+    h1.overlay_list[N].set_colormap('red2yellow')
+    h1.overlay_list[N+1].set_colormap('blue2cyanblue')
+    h1.overlay_list[N+2].set_colormap('red2yellow')
+    h1.overlay_list[N].set_alpha(0.5)
+    h1.overlay_list[N+1].set_alpha(0.75)
+    h1.overlay_list[N+2].set_alpha(0.25)
 
     # geo_data
     x, y, z, f, nn = h1.surf.x, h1.surf.y, h1.surf.z, h1.surf.faces, h1.surf.nn
 
     # rgb_data
-    rgb_array = h1.get_composited_rgb()
+    start = time.time()
+    rgb_array = h1.get_composite_rgb()
+    stop = time.time()
+    print "time of getting composite rgb:", stop - start, "seconds"
+
     vertex_number = rgb_array.shape[0]
     alpha_channel = np.ones((vertex_number, 1), dtype=np.uint8)*255
     rgba_lut = np.c_[rgb_array, alpha_channel]
@@ -145,6 +157,8 @@ if __name__ == "__main__":
     # surf.module_manager.scalar_lut_manager.lut._vtk_obj.SetTableRange(0, rgba_lut.shape[0])
     # surf.module_manager.scalar_lut_manager.lut.number_of_colors = rgba_lut.shape[0]
     surf.module_manager.scalar_lut_manager.lut.table = rgba_lut
+    stop2 = time.time()
+    print "total time:", stop2 - start, "seconds"
 
     mlab.show()
     raw_input()

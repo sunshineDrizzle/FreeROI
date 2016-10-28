@@ -17,9 +17,11 @@ from PyQt4.QtGui import *
 
 from froi.algorithm import meshtool as mshtool
 from froi.algorithm import array2qimage as aq
-from froi.algorithm import surface_data2rgb as s2rgb
+# from froi.algorithm import surface_data2rgb as s2rgb
 from labelconfig import LabelConfig
 from nibabel.spatialimages import ImageFileError
+
+import time
 
 
 class DoStack(QObject):
@@ -928,9 +930,12 @@ class Hemisphere(object):
         :return:
         """
 
-        return s2rgb.get_rgba_array(self.overlay_list[idx])
+        ol = self.overlay_list[idx]
 
-    def get_composited_rgb(self):
+        return aq.array2qrgba(ol.get_data(), ol.get_alpha()*255, ol.get_colormap(),
+                              (ol.get_min(), ol.get_max()))  # The scalar_data's alpha is belong to [0, 1].
+
+    def get_composite_rgb(self):
 
         start_render_index = self._get_start_render_index()
         if start_render_index == -1:
@@ -939,10 +944,15 @@ class Hemisphere(object):
             start_render_index += 1
 
         rgba_list = []
+        start1 = time.time()
+        count = 0
         for idx in self.overlay_idx[start_render_index:]:
             rgba_list.append(self.get_rgba(idx))
+            count += 1
+        stop1 = time.time()
+        print "time of {} colormap:".format(count), stop1 - start1, "seconds"
 
-        return s2rgb.alpha_composition(rgba_list)
+        return aq.qcomposition(rgba_list)
 
     def _read_scalar_data(self, filepath):
         """Load in scalar data from an image.
